@@ -142,12 +142,16 @@
                       </select>
                     </div>
                     <div class="row">
-                      <select multiple id="datastores" class="datastores map-select" disabled>
+                      <select multiple id="datastores" class="datastores map-select" >
                       </select>
                     </div>
                     <div class="row">
-                      <select multiple id="layers" class="layers map-select" disabled>
+                      <select multiple id="layers" class="layers map-select" >
                       </select>
+                    </div>
+                    <div class="row">
+                      <span id="descriptionInfo">
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -204,6 +208,8 @@ var capas_seleccionadas = [];
       //$( "#datastores" ).change( displayLayers );
       //$( "#layers" ).change( selectLayers );
       $( "#workspaces" ).change( displayAllLayers );
+      $( "#datastores" ).change( showDatastoreDescription );
+      $( "#layers" ).change( showLayerDescription );
 
 function getWorkspaces(){
   $.getJSON( "../geoserver/rest/workspaces.json", function( jsons ) {
@@ -289,7 +295,7 @@ function getAllLayers(workspaces_index){
         aux_datastores[key2]['workspace'] = value;
         $('#datastores')
            .append($("<option></option>")
-           .text(value2.name));console.log(value2.name);
+           .text(value2.name));
         //console.log(key2, value2);
         $.getJSON( "../geoserver/rest/workspaces/"+ws[value].name+"/datastores/"+value2.name+"/featuretypes.json", function( jsons ) {
           var aux_layers = jsons.featureTypes.featureType;
@@ -318,6 +324,38 @@ function displayAllLayers() {
   var multipleValues = $( "#workspaces" ).val() || [];
   getAllLayers(multipleValues);
   //console.log( l )
+}
+
+function showDatastoreDescription() {
+  var item = $(this)
+  var found = $.grep(ds, function(e){
+    if(e.name) {
+      return e.name == item.val()[0];
+    } else {
+      return false;
+    }});
+  //console.log(found[0].href);
+  url = found[0].href.split('/');
+  url[2] = "localhost";
+  $.getJSON( url.join('/'), function( jsons ) {
+    document.getElementById('descriptionInfo').innerHTML = "Datastore Info: " + jsons.dataStore.description;
+  });
+}
+
+function showLayerDescription() {
+  var item = $(this)
+  var found = $.grep(l, function(e){
+    if(e.name) {
+      return e.name == item.val()[0];
+    } else {
+      return false;
+    }});
+  //console.log(found[0].href);
+  url = found[0].href.split('/');
+  url[2] = "localhost";
+  $.getJSON( url.join('/'), function( jsons ) {
+    document.getElementById('descriptionInfo').innerHTML = "Layer Info: " + jsons.featureType.abstract;
+  });
 }
 
 function displayLayers() {
