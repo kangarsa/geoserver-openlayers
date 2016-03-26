@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8">
     <title>GIS Arqui</title>
     <link rel="stylesheet" href="ol/ol.css" type="text/css">
     <script src="ol/ol.js"></script>
@@ -163,24 +164,25 @@
     </div>
 
     <div class="row">
-      <div id="info">&nbsp;</div>
+      <div id="info">Seleccione una capa para ver su información&nbsp;</div>
     </div>
     <script>
 
+var selectedLayerTop;
 var ws = [];
 var ds = [];
 var l = [];
 var capas_seleccionadas = [];
-
-      var wmsSource = new ol.source.ImageWMS({
-        url: 'http://localhost/geoserver/test/wms',
-        params: {'LAYERS': 'test:LP_INDUSTRIAS_22185_Merge1'}
-      });
-
-      var wmsLayer = new ol.layer.Image({
-        source: wmsSource,
-        name: 'Puntitos',
-      });
+      //
+      // var wmsSource = new ol.source.ImageWMS({
+      //   url: 'http://localhost/geoserver/test/wms',
+      //   params: {'LAYERS': 'test:LP_INDUSTRIAS_22185_Merge1'}
+      // });
+      //
+      // var wmsLayer = new ol.layer.Image({
+      //   source: wmsSource,
+      //   name: 'Puntitos',
+      // });
 
       var osmLayer = new ol.layer.Tile({
           preload: Infinity,
@@ -368,15 +370,19 @@ function createMap(){
   updateMap();
 
   map.on('singleclick', function(evt) {
-    document.getElementById('info').innerHTML = 'Cargando... ';
-    var viewResolution = /** @type {number} */ (view.getResolution());
-    var source = wmsLayer.getSource();
-    var url = wmsSource.getGetFeatureInfoUrl(
-        evt.coordinate, viewResolution, view.getProjection(),
-        {'INFO_FORMAT': 'text/html'});
-    if (url) {
-      document.getElementById('info').innerHTML =
-          '<iframe seamless id="feature" src="' + url + '" onLoad="iframeDidLoad()";></iframe>';
+    if (selectedLayerTop){
+      document.getElementById('info').innerHTML = 'Cargando... ';
+      var viewResolution = /** @type {number} */ (view.getResolution());
+      var source = selectedLayerTop.getSource();
+      var url = source.getGetFeatureInfoUrl(
+          evt.coordinate, viewResolution, view.getProjection(),
+          {'INFO_FORMAT': 'text/html'});
+      if (url) {
+        document.getElementById('info').innerHTML =
+            '<iframe seamless id="feature" src="' + url + '" onLoad="iframeDidLoad()";></iframe>';
+      }
+    } else {
+      document.getElementById('info').innerHTML = 'Primero debe seleccionar una capa para ver y luego hacer click en un punto del mapa para ver su información. ';
     }
   });
 
@@ -446,9 +452,14 @@ function createMap(){
        */
       function buildLayerTree(layer) {
           var elem;
+          var div;
           var name = layer.get('name') ? layer.get('name') : "Group";
-          var div = "<li data-layerid='" + name + "'>" +
-                  "<span><i class='glyphicon glyphicon-file'></i> " + layer.get('name') + "</span>" +
+          if (layer.getLayers) {
+            div = "<li data-layerid='" + name + "'>"
+          } else {
+            div = "<li class='leaf' data-layerid='" + name + "'>"
+          }
+          div += "<span><i class='glyphicon glyphicon-file'></i> " + layer.get('name') + "</span>" +
                   "<i class='glyphicon glyphicon-check'></i> " +
                   "<input style='width:80px;' class='opacity' type='text' value='' data-slider-min='0' data-slider-max='1' data-slider-step='0.1' data-slider-tooltip='hide'>";
           if (layer.getLayers) {
@@ -526,27 +537,44 @@ function createMap(){
       function buildTree(){
         elem = buildLayerTree(map.getLayerGroup());
         $('#layerTree').empty().append(elem);
-                    // Handle opacity slider control
-                    $('input.opacity').slider().on('slide', function(ev) {
-                        var layername = $(this).closest('li').data('layerid');
-                        var layer = findBy(map.getLayerGroup(), 'name', layername);
+        // Handle opacity slider control
+        $('input.opacity').slider().on('slide', function(ev) {
+            var layername = $(this).closest('li').data('layerid');
+            var layer = findBy(map.getLayerGroup(), 'name', layername);
 
-                        layer.setOpacity(ev.value);
-                    });
+            layer.setOpacity(ev.value);
+        });
 
-                    // Handle visibility control
-                    $('i').on('click', function() {
-                        var layername = $(this).closest('li').data('layerid');
-                        var layer = findBy(map.getLayerGroup(), 'name', layername);
+        // Handle visibility control
+        $('i').on('click', function() {
+            var layername = $(this).closest('li').data('layerid');
+            var layer = findBy(map.getLayerGroup(), 'name', layername);
 
-                        layer.setVisible(!layer.getVisible());
+            layer.setVisible(!layer.getVisible());
 
-                        if (layer.getVisible()) {
-                            $(this).removeClass('glyphicon-unchecked').addClass('glyphicon-check');
-                        } else {
-                            $(this).removeClass('glyphicon-check').addClass('glyphicon-unchecked');
-                        }
-                    });
+            if (layer.getVisible()) {
+                $(this).removeClass('glyphicon-unchecked').addClass('glyphicon-check');
+            } else {
+                $(this).removeClass('glyphicon-check').addClass('glyphicon-unchecked');
+            }
+        });
+
+        // Handle visibility control dblclick
+        $('li.leaf').on('click', function() {
+            var layername = $(this).data('layerid');
+
+            var layer = findBy(map.getLayerGroup(), 'name', layername);
+
+            selectedLayerTop = layer;
+            $( "li.leaf" ).each(function( index ) {
+              $( this ).removeAttr('style');
+            });
+            $(this).css('font-weight', 'bold');
+            $(this).css('color', '#f52');
+            if (selectedLayerTop) {
+              document.getElementById('info').innerHTML = 'Capa seleccionada: '+layername+'. Ahora puede hacer click en un punto del mapa para ver su información. ';
+            }
+        });
 
       }
 
