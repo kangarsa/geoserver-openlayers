@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WMS GetFeatureInfo (Image Layer)</title>
+    <link rel="stylesheet" href="http://openlayers.org/en/v3.13.1/css/ol.css" type="text/css">
+    <script src="http://openlayers.org/en/v3.13.1/build/ol.js"></script>
+  </head>
+  <body>
+    <div id="map" class="map"></div>
+    <div id="info">&nbsp;</div>
+    <script>
+      var wmsSource = new ol.source.ImageWMS({
+        url: 'http://localhost:8080/geoserver/arqui/wms',
+        params: {'LAYERS': 'test:LP_INDUSTRIAS_22185_Merge1'},
+        serverType: 'geoserver',
+      });
+
+      var wmsLayer = new ol.layer.Image({
+        source: wmsSource
+      });
+
+      var view = new ol.View({
+        center: [0, 0],
+        zoom: 1
+      });
+
+      var map = new ol.Map({
+        layers: [wmsLayer],
+        target: 'map',
+        view: view
+      });
+
+      map.on('singleclick', function(evt) {
+        document.getElementById('info').innerHTML = '';
+        var viewResolution = /** @type {number} */ (view.getResolution());
+        var url = wmsSource.getGetFeatureInfoUrl(
+            evt.coordinate, viewResolution, view.getProjection(), /*por que?? se supone que es otra proyeccion*/
+            {'INFO_FORMAT': 'text/html'});
+        if (url) {
+          document.getElementById('info').innerHTML =
+              '<iframe seamless src="' + url + '"></iframe>';
+        }
+      });
+
+      map.on('pointermove', function(evt) {
+        if (evt.dragging) {
+          return;
+        }
+        var pixel = map.getEventPixel(evt.originalEvent);
+        var hit = map.forEachLayerAtPixel(pixel, function() {
+          return true;
+        });
+        map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+      });
+    </script>
+  </body>
+</html>

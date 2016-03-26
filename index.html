@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>GIS Arqui</title>
+    <link rel="stylesheet" href="ol/ol.css" type="text/css">
+    <script src="ol/ol.js"></script>
+    <link rel="stylesheet" href="ol/bootstrap.min.css">
+    <link rel="stylesheet" href="dist/css/bootstrap-slider.min.css" type="text/css">
+    <link rel="stylesheet" href="css/vendor.css" type="text/css">
+    <link rel="stylesheet" href="css/vendor2.css" type="text/css">
+    <script src="dist/bootstrap-slider.min.js"></script>
+    <script src="ol/jquery.min.js"></script>
+    <script src="jquery-ui.js"></script>
+    <script src="js/vendor.js"></script>
+    <script src="js/vendor2.js"></script>
+
+
+        <style>
+            ul.layerstack {
+                list-style: none;
+            }
+
+            ul.layerstack li {
+                border-bottom: 1px solid #ccc;
+                padding: 3px;
+            }
+            ul.layerstack li:hover {
+                background-color: #eee;
+            }
+            ul.layerstack li.selected {
+                background-color: #ddd;
+            }
+        </style>
+        <!-- CSS and JS code for the tree extracted from http://stackoverflow.com/questions/11167628/trees-in-twitter-bootstrap -->
+        <style>
+        iframe {
+            width: 100%;
+            height: 200px;
+            border: none;
+            padding-left: 1em;
+            padding-right: 1em;
+        }
+        .map-select {
+          width: 100%;
+          height: 30%;
+        }
+        body {
+          padding: 1em;
+          font-family: Helvetica Neue,Helvetica,Arial,sans-serif;
+        }
+            .tree {
+                min-height:20px;
+                /*max-height: 150px;*/
+                overflow: auto;
+                padding: 3px;
+                margin-bottom:5px;
+                -webkit-box-shadow:inset 0 1px 1px rgba(0, 0, 0, 0.05);
+                -moz-box-shadow:inset 0 1px 1px rgba(0, 0, 0, 0.05);
+                box-shadow:inset 0 1px 1px rgba(0, 0, 0, 0.05)
+            }
+            .tree li {
+                list-style-type:none;
+                margin:0;
+                padding:10px 5px 10px 5px;
+                position:relative;
+                /*                -moz-border-radius:5px;
+                                -webkit-border-radius:5px;
+                                border:1px solid #999;
+                                border-radius:5px;*/
+            }
+            .tree li::before, .tree li::after {
+                content:'';
+                left:-20px;
+                position:absolute;
+                right:auto
+            }
+            .tree li::before {
+                border-left:1px solid #999;
+                bottom:50px;
+                height:100%;
+                top:0;
+                width:1px
+            }
+            .tree li::after {
+                border-top:1px solid #999;
+                height:20px;
+                top:25px;
+                width:25px
+            }
+            .tree li span {
+                display: flex;
+                #display:inline-block;
+                padding:3px 8px;
+                text-decoration:none
+            }
+            .tree li.parent_li>span {
+                cursor:pointer
+            }
+            .tree>ul>li::before, .tree>ul>li::after {
+                border:0
+            }
+            .tree li:last-child::before {
+                height:30px
+            }
+            .tree li.parent_li>span:hover, .tree li.parent_li>span:hover+ul li span {
+                background:#eee;
+                border:1px solid #94a0b4;
+                color:#000;
+                -moz-border-radius:5px;
+                -webkit-border-radius:5px;
+                border-radius:5px;
+            }
+        </style>
+        <style>
+          .tab {
+            height: 355px;
+            overflow: auto;
+          }
+          .tab-content {
+            height: 80%;
+          }
+        </style>
+
+  </head>
+  <body id="main">
+
+    <div class="row">
+        <div class="col-md-3">
+          <div id="tabs">
+            <!-- Nav tabs -->
+            <ul class="nav nav-tabs" role="tablist">
+              <li role="presentation" class="active"><a href="#home" aria-controls="home" role="tab" data-toggle="tab">Workspaces</a></li>
+              <li role="presentation"><a href="#profile" aria-controls="profile" role="tab" data-toggle="tab">Layers</a></li>
+            </ul>
+            <div class="tab-content">
+              <div role="tabpanel" class="tab-pane active" id="home">
+                <div id="workspace_select">
+                  <div class="col-md-12">
+                    <div class="row">
+                      <select multiple id="workspaces" class="workspaces map-select" class="form-control">
+                      </select>
+                    </div>
+                    <div class="row">
+                      <select multiple id="datastores" class="datastores map-select" disabled>
+                      </select>
+                    </div>
+                    <div class="row">
+                      <select multiple id="layers" class="layers map-select" disabled>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div role="tabpanel" class="tab-pane" id="profile"><div id="layerTree" class="tree tab">&nbsp;</div></div>
+            </div>
+
+          </div>
+        </div>
+        <div class="col-md-9">
+            <div id="map" class="map"></div>
+        </div>
+
+    </div>
+
+    <div class="row">
+      <div id="info">&nbsp;</div>
+    </div>
+    <script>
+
+var ws = [];
+var ds = [];
+var l = [];
+var capas_seleccionadas = [];
+
+      var wmsSource = new ol.source.ImageWMS({
+        url: 'http://localhost/geoserver/test/wms',
+        params: {'LAYERS': 'test:LP_INDUSTRIAS_22185_Merge1'}
+      });
+
+      var wmsLayer = new ol.layer.Image({
+        source: wmsSource,
+        name: 'Puntitos',
+      });
+
+      var osmLayer = new ol.layer.Tile({
+          preload: Infinity,
+          source: new ol.source.OSM(),
+          name: 'Tierra',
+      });
+
+      var view = new ol.View({
+        center: [0, 0],
+        zoom: 2,
+      });
+
+
+      getWorkspaces();
+      //getDatastores(ws[1]); /*onload*/
+      //getLayers(ws[1],ds[1]); /*onload*/
+
+      //$( "#workspaces" ).change( displayDatastores );
+      //$( "#datastores" ).change( displayLayers );
+      //$( "#layers" ).change( selectLayers );
+      $( "#workspaces" ).change( displayAllLayers );
+
+function getWorkspaces(){
+  $.getJSON( "../geoserver/rest/workspaces.json", function( jsons ) {
+    ws = jsons.workspaces.workspace;
+      $.each(ws, function(key, value) {
+    //  console.log(key);
+     $('#workspaces')
+         .append($("<option></option>")
+         .attr("value",key)
+         .text(value.name));
+    });
+  });
+}
+
+function getDatastores(workspaces_index){
+  ds = []
+  $.each( workspaces_index, function(key, value){
+    $.getJSON( "../geoserver/rest/workspaces/"+ws[value].name+"/datastores.json", function( jsons ) {
+      var aux = jsons.dataStores.dataStore;
+      $.each(aux, function(key2, value2) {
+        aux[key2]['workspace'] = value;
+      });
+      ds = ds.concat(aux);
+      showDatastores();
+    });
+  });
+}
+
+
+
+function showDatastores(){
+  $( "#datastores" ).empty();
+  $( "#layers" ).empty();
+  $.each(ds, function(key, value) {
+    $('#datastores')
+       .append($("<option></option>")
+       .attr("value",key)
+       .text(value.name));
+    });
+}
+
+function getLayers(datastores_index){
+  l = [];
+  $( "#layers" ).empty();
+  $.each( datastores_index, function(key, value){
+    //console.log( "JSON Data: " + JSON.stringify(datastores_index, null, 2) );
+    $.getJSON( "../geoserver/rest/workspaces/"+ws[ds[value].workspace].name+"/datastores/"+ds[value].name+"/featuretypes.json", function( jsons ) {
+      var aux = jsons.featureTypes.featureType;
+      $.each(aux, function(key2, value2) {
+        aux[key2]['datastore'] = value;
+      });
+      l = l.concat(aux);
+      showLayers();
+    });
+  });
+}
+
+function showLayers(){
+  $( "#layers" ).empty();
+  //console.log( "JSON Data: " + JSON.stringify(jsons, null, 2) );
+  $.each(l, function(key, value) {
+    $('#layers')
+       .append($("<option></option>")
+       .attr("value",key)
+       .text(value.name));
+    });
+}
+
+
+function getAllLayers(workspaces_index){
+  ds = [];
+  l = [];
+  $( "#datastores" ).empty();
+  $( "#layers" ).empty();
+  capas_seleccionadas = [];
+  var datastores_index = [];
+  $.each( workspaces_index, function(key, value){
+    $.getJSON( "../geoserver/rest/workspaces/"+ws[value].name+"/datastores.json", function( jsons ) {
+      var aux_datastores = jsons.dataStores.dataStore;
+      ds = ds.concat(aux_datastores);
+      //datastores_index.push(key);
+      $.each( aux_datastores, function(key2, value2){
+        aux_datastores[key2]['workspace'] = value;
+        $('#datastores')
+           .append($("<option></option>")
+           .text(value2.name));console.log(value2.name);
+        //console.log(key2, value2);
+        $.getJSON( "../geoserver/rest/workspaces/"+ws[value].name+"/datastores/"+value2.name+"/featuretypes.json", function( jsons ) {
+          var aux_layers = jsons.featureTypes.featureType;
+          $.each(aux_layers, function(key2, value2) {
+            aux_layers[key2]['datastore'] = value;
+          });
+          l = l.concat(aux_layers);
+          $.each(aux_layers, function(key, value) {
+            $('#layers')
+               .append($("<option></option>")
+               .text(value.name));
+            });
+            createMap();
+        });
+      });
+    });
+  });
+}
+
+function displayDatastores() {
+  var multipleValues = $( "#workspaces" ).val() || [];
+  getDatastores(multipleValues);
+}
+
+function displayAllLayers() {
+  var multipleValues = $( "#workspaces" ).val() || [];
+  getAllLayers(multipleValues);
+  //console.log( l )
+}
+
+function displayLayers() {
+  var multipleValues = $( "#datastores" ).val() || [];
+  getLayers(multipleValues);
+}
+
+function selectLayers(){
+  capas_seleccionadas = [];
+  var multipleValues = $( "#layers" ).val() || [];
+  $.each( multipleValues, function(key, value){
+    //console.log( "JSON Data: " + JSON.stringify(l[value], null, 2) );
+    capas_seleccionadas = capas_seleccionadas.concat(l[value]);
+  });
+  //console.log( "JSON Data: " + JSON.stringify(capas_seleccionadas, null, 2) );
+  /* capas_seleccionadas ahora son las capas que se deben disponer el el tree y en el mapa */
+  //createMap();
+}
+
+
+function getLayersWMS(baseMapArray){
+  var wmsLayers = baseMapArray;
+  //var capas = []
+  $.each( l, function(key, value){
+    var wmsSource = new ol.source.ImageWMS({
+      url: 'http://localhost/geoserver/test/wms',
+      params: {'LAYERS': ds[value.datastore]+':'+value.name}
+    });
+    var wmsLayer = new ol.layer.Image({
+      source: wmsSource,
+      name: value.name,
+    });
+    //console.log( wmsLayer );
+    wmsLayers.push(wmsLayer);
+  });
+  //console.log( wmsLayers );
+  return wmsLayers;
+}
+
+function updateMap(){
+  $( '#map' ).empty();
+  map = new ol.Map({
+    layers: getLayersWMS([osmLayer]),
+    target: 'map',
+    view: view
+  });
+}
+
+function createMap(){
+  updateMap();
+
+  map.on('singleclick', function(evt) {
+    document.getElementById('info').innerHTML = 'Cargando... ';
+    var viewResolution = /** @type {number} */ (view.getResolution());
+    var source = wmsLayer.getSource();
+    var url = wmsSource.getGetFeatureInfoUrl(
+        evt.coordinate, viewResolution, view.getProjection(),
+        {'INFO_FORMAT': 'text/html'});
+    if (url) {
+      document.getElementById('info').innerHTML =
+          '<iframe seamless id="feature" src="' + url + '" onLoad="iframeDidLoad()";></iframe>';
+    }
+  });
+
+  map.on('pointermove', function(evt) {
+    if (evt.dragging) {
+      return;
+    }
+    var pixel = map.getEventPixel(evt.originalEvent);
+    var hit = map.forEachLayerAtPixel(pixel, function() {
+      return true;
+    });
+    map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+  });
+
+  // Name the root layer group
+  map.getLayerGroup().set('name', ws[$('#workspaces').val()].name);
+  //map_base.getLayerGroup().set('name', 'Base');
+
+  updateTree();
+  buildTree();
+}
+
+
+
+      function iframeDidLoad() {
+          //$("").addClass("intro");
+          $("#feature").contents().find('table').removeClass('featureInfo').addClass('table table-condensed get-info-table');
+          $("#feature").contents().find('head').html('<link rel="stylesheet" href="../../Reunion/ol/bootstrap.min.css">');
+          $("#feature").contents().find('head').html('<link rel="stylesheet" href="../../Reunion/css/get-info-table.css">');
+      }
+
+      // map.on('singleclick', function(evt) {
+      //   document.getElementById('info').innerHTML = 'Cargando... ';
+      //   var viewResolution = /** @type {number} */ (view.getResolution());
+      //   var source = wmsLayer.getSource();
+      //   var url = wmsSource.getGetFeatureInfoUrl(
+      //       evt.coordinate, viewResolution, view.getProjection(),
+      //       {'INFO_FORMAT': 'text/html'});
+      //   if (url) {
+      //     document.getElementById('info').innerHTML =
+      //         '<iframe seamless id="feature" src="' + url + '" onLoad="iframeDidLoad()";></iframe>';
+      //   }
+      // });
+      //
+      // map.on('pointermove', function(evt) {
+      //   if (evt.dragging) {
+      //     return;
+      //   }
+      //   var pixel = map.getEventPixel(evt.originalEvent);
+      //   var hit = map.forEachLayerAtPixel(pixel, function() {
+      //     return true;
+      //   });
+      //   map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+      // });
+      //
+      //
+      //
+      // // Name the root layer group
+      // map.getLayerGroup().set('name', 'Base');
+
+      /**
+       * Build a tree layer from the map layers with visible and opacity
+       * options.
+       *
+       * @param {type} layer
+       * @returns {String}
+       */
+      function buildLayerTree(layer) {
+          var elem;
+          var name = layer.get('name') ? layer.get('name') : "Group";
+          var div = "<li data-layerid='" + name + "'>" +
+                  "<span><i class='glyphicon glyphicon-file'></i> " + layer.get('name') + "</span>" +
+                  "<i class='glyphicon glyphicon-check'></i> " +
+                  "<input style='width:80px;' class='opacity' type='text' value='' data-slider-min='0' data-slider-max='1' data-slider-step='0.1' data-slider-tooltip='hide'>";
+          if (layer.getLayers) {
+              var sublayersElem = '';
+              var layers = layer.getLayers().getArray(),
+                      len = layers.length;
+              for (var i = len - 1; i >= 0; i--) {
+                  sublayersElem += buildLayerTree(layers[i]);
+              }
+              elem = div + " <ul>" + sublayersElem + "</ul></li>";
+          } else {
+              elem = div + " </li>";
+          }
+          return elem;
+      }
+
+      /**
+       * Initialize the tree from the map layers
+       * @returns {undefined}
+       */
+      function initializeTree() {
+
+          var elem = buildLayerTree(map.getLayerGroup());
+          $('#layertree').empty().append(elem);
+
+          $('.tree li:has(ul)').addClass('parent_li').find(' > span').attr('title', 'Collapse this branch');
+          $('.tree li.parent_li > span').on('click', function(e) {
+              var children = $(this).parent('li.parent_li').find(' > ul > li');
+              if (children.is(":visible")) {
+                  children.hide('fast');
+                  $(this).attr('title', 'Expand this branch').find(' > i').addClass('glyphicon-plus').removeClass('glyphicon-minus');
+              } else {
+                  children.show('fast');
+                  $(this).attr('title', 'Collapse this branch').find(' > i').addClass('glyphicon-minus').removeClass('glyphicon-plus');
+              }
+              e.stopPropagation();
+          });
+      }
+
+      /**
+       * Finds recursively the layer with the specified key and value.
+       * @param {ol.layer.Base} layer
+       * @param {String} key
+       * @param {any} value
+       * @returns {ol.layer.Base}
+       */
+      function findBy(layer, key, value) {
+
+          if (layer.get(key) === value) {
+              return layer;
+          }
+
+          // Find recursively if it is a group
+          if (layer.getLayers) {
+              var layers = layer.getLayers().getArray(),
+                      len = layers.length, result;
+              for (var i = 0; i < len; i++) {
+                  result = findBy(layers[i], key, value);
+                  if (result) {
+                      return result;
+                  }
+              }
+          }
+
+          return null;
+      }
+
+      function updateTree(){
+            $('#layerTree').empty();
+
+            initializeTree();
+
+      }
+
+      function buildTree(){
+        elem = buildLayerTree(map.getLayerGroup());
+        $('#layerTree').empty().append(elem);
+                    // Handle opacity slider control
+                    $('input.opacity').slider().on('slide', function(ev) {
+                        var layername = $(this).closest('li').data('layerid');
+                        var layer = findBy(map.getLayerGroup(), 'name', layername);
+
+                        layer.setOpacity(ev.value);
+                    });
+
+                    // Handle visibility control
+                    $('i').on('click', function() {
+                        var layername = $(this).closest('li').data('layerid');
+                        var layer = findBy(map.getLayerGroup(), 'name', layername);
+
+                        layer.setVisible(!layer.getVisible());
+
+                        if (layer.getVisible()) {
+                            $(this).removeClass('glyphicon-unchecked').addClass('glyphicon-check');
+                        } else {
+                            $(this).removeClass('glyphicon-check').addClass('glyphicon-unchecked');
+                        }
+                    });
+
+      }
+
+      //$(document).ready(function() {
+      //  updateTree();
+      //});
+      //buildTree();
+    </script>
+  </body>
+</html>
