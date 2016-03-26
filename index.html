@@ -418,6 +418,8 @@ function createMap(){
       if (url) {
         document.getElementById('info').innerHTML =
             '<iframe seamless id="feature" src="' + url + '" onLoad="iframeDidLoad()";></iframe>';
+      } else {
+        document.getElementById('info').innerHTML = 'Error. No se pudo cargar infomación del layer.';
       }
     } else {
       document.getElementById('info').innerHTML = 'Primero debe seleccionar una capa para ver y luego hacer click en un punto del mapa para ver su información. ';
@@ -446,10 +448,11 @@ function createMap(){
 
 
       function iframeDidLoad() {
+          // ESTO NO ES NESESARIO POR AHORA
           //$("").addClass("intro");
-          $("#feature").contents().find('table').removeClass('featureInfo').addClass('table table-condensed get-info-table');
-          $("#feature").contents().find('head').html('<link rel="stylesheet" href="../../Reunion/ol/bootstrap.min.css">');
-          $("#feature").contents().find('head').html('<link rel="stylesheet" href="../../Reunion/css/get-info-table.css">');
+          //$("#feature").contents().find('table').removeClass('featureInfo').addClass('table table-condensed get-info-table');
+          //$("#feature").contents().find('head').html('<link rel="stylesheet" href="../../Reunion/ol/bootstrap.min.css">');
+          //$("#feature").contents().find('head').html('<link rel="stylesheet" href="../../Reunion/css/jaguar.css">');
       }
 
       // map.on('singleclick', function(evt) {
