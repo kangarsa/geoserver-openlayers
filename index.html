@@ -46,8 +46,13 @@
           height: 30%;
         }
         body {
-          padding: 1em;
+          padding: 0em;
           font-family: Helvetica Neue,Helvetica,Arial,sans-serif;
+        }
+        #menuvar {
+          padding: 0em;
+          margin: 0em;
+          width: 100%;
         }
             .tree {
                 min-height:20px;
@@ -125,6 +130,41 @@
   </head>
   <body id="main">
 
+            <div class="container" id="menuvar">
+
+                <nav class="navbar navbar-inverse navbar-static-top" role="navigation" style="margin-bottom: 0px;">
+                    <div class="container">
+                        <div class="navbar-header">
+                            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                                <span class="sr-only">Toggle navigation</span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </button>
+                            <a class="navbar-brand" href="http://www.jssor.com/index.html">Bootstrap Carousel</a>
+                        </div>
+                        <div id="navbar" class="navbar-collapse collapse">
+                            <ul class="nav navbar-nav">
+                                <li><a href="http://www.jssor.com/index.html">Home</a></li>
+                                <li><a href="http://www.jssor.com/tutorial/index.html">Tutorial</a></li>
+                                <li><a href="http://www.jssor.com/help/index.html">Help</a></li>
+                                <li><a href="http://www.jssor.com/demos/index.html">Demos</a></li>
+                                <li><a href="http://www.jssor.com/skins/index.html">Skins</a></li>
+                                <li><a href="http://www.jssor.com/development/index.html">Development</a></li>
+                                <!--<li><a href="http://www.jssor.com/download.html">Download</a></li>-->
+                                <li><a href="http://www.jssor.com/support.html">Support</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+
+            </div>
+
+
+
+
+
+
     <div class="row">
         <div class="col-md-3">
           <div id="tabs">
@@ -199,7 +239,6 @@ var capas_seleccionadas = [];
         zoom: 2,
       });
 
-
       getWorkspaces();
       //getDatastores(ws[1]); /*onload*/
       //getLayers(ws[1],ds[1]); /*onload*/
@@ -211,11 +250,16 @@ var capas_seleccionadas = [];
       $( "#datastores" ).change( showDatastoreDescription );
       $( "#layers" ).change( showLayerDescription );
 
+var defa = -1;
+
 function getWorkspaces(){
   $.getJSON( "../geoserver/rest/workspaces.json", function( jsons ) {
     ws = jsons.workspaces.workspace;
       $.each(ws, function(key, value) {
     //  console.log(key);
+    if (value.name.toLowerCase() == 'default') {
+      defa = key;
+    }
      $('#workspaces')
          .append($("<option></option>")
          .attr("value",key)
@@ -286,6 +330,7 @@ function getAllLayers(workspaces_index){
   $( "#layers" ).empty();
   capas_seleccionadas = [];
   var datastores_index = [];
+  workspaces_index.push(defa);
   $.each( workspaces_index, function(key, value){
     $.getJSON( "../geoserver/rest/workspaces/"+ws[value].name+"/datastores.json", function( jsons ) {
       var aux_datastores = jsons.dataStores.dataStore;
@@ -321,6 +366,7 @@ function displayDatastores() {
 }
 
 function displayAllLayers() {
+  var x = $( "#workspaces" ).filter('[value="0"]');
   var multipleValues = $( "#workspaces" ).val() || [];
   getAllLayers(multipleValues);
   //console.log( l )
@@ -336,7 +382,7 @@ function showDatastoreDescription() {
     }});
   //console.log(found[0].href);
   url = found[0].href.split('/');
-  url[2] = "localhost";
+  url[2] = "..";
   $.getJSON( url.join('/'), function( jsons ) {
     document.getElementById('descriptionInfo').innerHTML = "Datastore Info: " + jsons.dataStore.description;
   });
@@ -352,7 +398,7 @@ function showLayerDescription() {
     }});
   //console.log(found[0].href);
   url = found[0].href.split('/');
-  url[2] = "localhost";
+  url[2] = "..";
   $.getJSON( url.join('/'), function( jsons ) {
     document.getElementById('descriptionInfo').innerHTML = "Layer Info: " + jsons.featureType.abstract;
   });
@@ -381,7 +427,7 @@ function getLayersWMS(baseMapArray){
   //var capas = []
   $.each( l, function(key, value){
     var wmsSource = new ol.source.ImageWMS({
-      url: 'http://localhost/geoserver/test/wms',
+      url: '../geoserver/test/wms',
       params: {'LAYERS': ds[value.datastore]+':'+value.name}
     });
     var wmsLayer = new ol.layer.Image({
@@ -418,8 +464,6 @@ function createMap(){
       if (url) {
         document.getElementById('info').innerHTML =
             '<iframe seamless id="feature" src="' + url + '" onLoad="iframeDidLoad()";></iframe>';
-      } else {
-        document.getElementById('info').innerHTML = 'Error. No se pudo cargar infomación del layer.';
       }
     } else {
       document.getElementById('info').innerHTML = 'Primero debe seleccionar una capa para ver y luego hacer click en un punto del mapa para ver su información. ';
