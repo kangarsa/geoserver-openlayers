@@ -116,8 +116,9 @@ function getAllLayers(workspaces_index){
   $( "#layers" ).empty();
   capas_seleccionadas = [];
   var datastores_index = [];
-  workspaces_index.push(defa);
+  //workspaces_index.push(defa);
   $.each( workspaces_index, function(key, value){
+    //console.log(ws[value]);
     $.getJSON( "../geoserver/rest/workspaces/"+ws[value].name+"/datastores.json", function( jsons ) {
       var aux_datastores = jsons.dataStores.dataStore;
       ds = ds.concat(aux_datastores);
@@ -253,6 +254,7 @@ function createMap(){
       }
     } else {
       document.getElementById('info').innerHTML = 'Primero debe seleccionar una capa para ver y luego hacer click en un punto del mapa para ver su información. ';
+      $('.nav-tabs a[href="#profile"]').tab('show')
     }
   });
 
